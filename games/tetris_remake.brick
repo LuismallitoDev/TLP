@@ -170,10 +170,13 @@ DEFINE SHAPE V_PIECE:
     [0, 0, 0]
     [0, 1, 1]
     [0, 0, 1]
-  STATE 4:
-    [0, 0, 0]
-    [1, 0, 0]
-    [1, 1, 0]
+END
+
+DEFINE POWERUP GEM_POWERUP:
+  COLOR: #FFD700
+  CHANCE: 0
+  STATE 1:
+    [1]
 END
 
 # --- Logica y Reglas ---

@@ -70,11 +70,25 @@ class Juego:
                     "states": datos.get("states", [])
                 }
 
+        # Cargar los power-ups si existen
+        self.powerups = {}
+        for nombre, datos in self.datos_juego.get('powerups', {}).items():
+            if isinstance(datos, dict):
+                self.powerups[nombre] = {
+                    "color": datos.get("color", "#FFD700"),
+                    "chance": int(datos.get("chance", 0)),
+                    "states": datos.get("states", [])
+                }
+
         if self.tipo_juego == 'TETRIS':
             self.pieza_actual = None
             self.pieza_x, self.pieza_y, self.pieza_rotacion = 0, 0, 0
             self.velocidad_gravedad = 0.4
             self.nombre_pieza_actual = None
+            
+            # Rastreadores para el spawning de Power-Ups
+            self.lineas_3_simultaneas = False
+            self.l_piece_rotaciones = 0
         
         if self.tipo_juego == 'SNAKE':
             self.serpiente_cuerpo = []
@@ -158,8 +172,11 @@ class Juego:
         # 2. Dibujar la pieza actual de Tetris
         if self.tipo_juego == 'TETRIS' and self.pieza_actual:
             color_pieza = '#00FFFF'
-            if self.nombre_pieza_actual and self.nombre_pieza_actual in self.shapes:
-                color_pieza = self.shapes[self.nombre_pieza_actual]['color']
+            if self.nombre_pieza_actual:
+                if self.nombre_pieza_actual in self.shapes:
+                    color_pieza = self.shapes[self.nombre_pieza_actual]['color']
+                elif self.nombre_pieza_actual in self.powerups:
+                    color_pieza = self.powerups[self.nombre_pieza_actual]['color']
             matriz_pieza = self.pieza_actual[self.pieza_rotacion]
             for y_offset, fila in enumerate(matriz_pieza):
                 for x_offset, celda in enumerate(fila):
@@ -209,22 +226,34 @@ class Juego:
     # ---------------------------------------------------------------------
 
     def tetris_spawn_pieza(self):
-        # Seleccion ponderada (CHANCE) compatible con Python 2.7 y 3
-        nombres = list(self.shapes.keys())
-        pesos = [self.shapes[n]['chance'] for n in nombres]
-        total_pesos = sum(pesos)
-        
-        r = random.uniform(0, total_pesos)
-        acumulado = 0
-        nombre_seleccionado = nombres[-1]
-        for nombre, peso in zip(nombres, pesos):
-            if acumulado + peso >= r:
-                nombre_seleccionado = nombre
-                break
-            acumulado += peso
+        # 1. Verificar si se cumplen las condiciones para spawnear el Power-Up
+        if self.lineas_3_simultaneas and self.l_piece_rotaciones >= 10 and self.powerups:
+            # Seleccionar e instanciar el Power-Up (ej. GEM_POWERUP)
+            nombre_seleccionado = list(self.powerups.keys())[0]  # Obtener el primer powerup
+            self.nombre_pieza_actual = nombre_seleccionado
+            self.pieza_actual = self.powerups[nombre_seleccionado]['states']
             
-        self.nombre_pieza_actual = nombre_seleccionado
-        self.pieza_actual = self.shapes[nombre_seleccionado]['states']
+            # Resetear las condiciones especiales tras el spawn
+            self.lineas_3_simultaneas = False
+            self.l_piece_rotaciones = 0
+        else:
+            # 2. Seleccion ponderada (CHANCE) de pieza regular
+            nombres = list(self.shapes.keys())
+            pesos = [self.shapes[n]['chance'] for n in nombres]
+            total_pesos = sum(pesos)
+            
+            r = random.uniform(0, total_pesos)
+            acumulado = 0
+            nombre_seleccionado = nombres[-1]
+            for nombre, peso in zip(nombres, pesos):
+                if acumulado + peso >= r:
+                    nombre_seleccionado = nombre
+                    break
+                acumulado += peso
+                
+            self.nombre_pieza_actual = nombre_seleccionado
+            self.pieza_actual = self.shapes[nombre_seleccionado]['states']
+            
         self.pieza_x, self.pieza_y, self.pieza_rotacion = self.ancho // 2 - 2, 0, 0
         if self.tetris_verificar_colision(self.pieza_x, self.pieza_y, self.pieza_rotacion):
             self.juego_terminado = True
@@ -246,12 +275,17 @@ class Juego:
         nueva_rotacion = (self.pieza_rotacion + 1) % len(self.pieza_actual)
         if not self.tetris_verificar_colision(self.pieza_x, self.pieza_y, nueva_rotacion):
             self.pieza_rotacion = nueva_rotacion
+            if self.nombre_pieza_actual == 'L_PIECE':
+                self.l_piece_rotaciones += 1
 
     def tetris_fijar_pieza(self):
         matriz_pieza = self.pieza_actual[self.pieza_rotacion]
         color_pieza = '#00FFFF'
-        if self.nombre_pieza_actual and self.nombre_pieza_actual in self.shapes:
-            color_pieza = self.shapes[self.nombre_pieza_actual]['color']
+        if self.nombre_pieza_actual:
+            if self.nombre_pieza_actual in self.shapes:
+                color_pieza = self.shapes[self.nombre_pieza_actual]['color']
+            elif self.nombre_pieza_actual in self.powerups:
+                color_pieza = self.powerups[self.nombre_pieza_actual]['color']
         for y_offset, fila in enumerate(matriz_pieza):
             for x_offset, celda in enumerate(fila):
                 if celda == 1:
@@ -276,6 +310,8 @@ class Juego:
         nuevo_grid = [fila for fila in self.grid if not all(fila)]
         lineas_limpias = self.alto - len(nuevo_grid)
         if lineas_limpias > 0:
+            if lineas_limpias >= 3:
+                self.lineas_3_simultaneas = True
             self.grid = [[0] * self.ancho for _ in range(lineas_limpias)] + nuevo_grid
             for _ in range(lineas_limpias): self.ejecutar_evento('ON_LINE_CLEAR')
     

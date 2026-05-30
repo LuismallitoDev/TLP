@@ -2,7 +2,8 @@
 
 <tipo_juego> ::= "GAME_TYPE" "TETRIS"
 <grid>       ::= "GAME_GRID" "(" <numero> "," <numero> ")"
-<definiciones> ::= <definicion_shape> | <definicion_shape> <definiciones>
+<definiciones> ::= <definicion_shape> | <definicion_powerup> | <definicion_shape> <definiciones> | <definicion_powerup> <definiciones>
+<definicion_powerup> ::= "DEFINE" "POWERUP" <identificador> ":" <atributos_opcionales> <estados> "END"
 <eventos>    ::= <evento> | <evento> <eventos>
 
 <definicion_shape> ::= "DEFINE" "SHAPE" <identificador> ":" <atributos_opcionales> <estados> "END"

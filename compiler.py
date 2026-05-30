@@ -17,7 +17,7 @@ class Parser:
     def __init__(self, tokens):
         self.tokens = tokens
         self.posicion = 0
-        self.ast = {"tipo_juego": None, "config": {}, "shapes": {}, "events": {}}
+        self.ast = {"tipo_juego": None, "config": {}, "shapes": {}, "events": {}, "powerups": {}}
 
     def parse(self):
         while self.posicion < len(self.tokens):
@@ -27,7 +27,7 @@ class Parser:
             elif token_actual == 'GAME_GRID':
                 self.parsear_grid()
             elif token_actual == 'DEFINE':
-                self.parsear_shape()
+                self.parsear_define()
             elif token_actual == 'ON':
                 self.parsear_evento()
             else:
@@ -58,10 +58,10 @@ class Parser:
         self.consumir(')')
         self.ast['config']['grid_size'] = [ancho, alto]
 
-    def parsear_shape(self):
+    def parsear_define(self):
         self.consumir('DEFINE')
-        self.consumir('SHAPE')
-        nombre_shape = self.consumir()
+        tipo = self.consumir()  # Puede ser 'SHAPE' o 'POWERUP'
+        nombre = self.consumir()
         self.consumir(':')
         
         # Valores por defecto para atributos adicionales
@@ -95,12 +95,19 @@ class Parser:
             estados.append(matriz)
         self.consumir('END')
         
-        # Guardar como diccionario con atributos
-        self.ast['shapes'][nombre_shape] = {
-            "color": color,
-            "chance": chance,
-            "states": estados
-        }
+        # Guardar en la coleccion correspondiente
+        if tipo == 'POWERUP':
+            self.ast['powerups'][nombre] = {
+                "color": color,
+                "chance": chance,
+                "states": estados
+            }
+        else:
+            self.ast['shapes'][nombre] = {
+                "color": color,
+                "chance": chance,
+                "states": estados
+            }
 
     # --- FUNCION CORREGIDA ---
     def parsear_evento(self):
