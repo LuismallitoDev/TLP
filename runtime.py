@@ -377,7 +377,7 @@ if __name__ == "__main__":
         sys.exit(1)
     archivo_juego = sys.argv[1]
     try:
-        with open(archivo_juego, 'r', encoding='utf-8') as f:
+        with open(archivo_juego, 'r') as f:
             datos_juego = json.load(f)
     except (IOError, OSError):
         print("Error: No se pudo encontrar el archivo " + archivo_juego)

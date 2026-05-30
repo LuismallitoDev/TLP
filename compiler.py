@@ -155,7 +155,7 @@ if __name__ == "__main__":
     archivo_salida = archivo_entrada.replace('.brick', '.json')
     print("Compilando " + archivo_entrada + "...")
     try:
-        with open(archivo_entrada, 'r', encoding='utf-8') as f:
+        with open(archivo_entrada, 'r') as f:
             codigo = f.read()
         tokens = lexer(codigo)
         parser = Parser(tokens)
