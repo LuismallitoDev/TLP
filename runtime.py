@@ -88,7 +88,6 @@ class Juego:
             
             # Rastreadores para el spawning de Power-Ups
             self.lineas_3_simultaneas = False
-            self.l_piece_rotaciones = 0
         
         if self.tipo_juego == 'SNAKE':
             self.serpiente_cuerpo = []
@@ -227,7 +226,7 @@ class Juego:
 
     def tetris_spawn_pieza(self):
         # 1. Verificar si se cumplen las condiciones para spawnear el Power-Up
-        if self.lineas_3_simultaneas and self.l_piece_rotaciones >= 10 and self.powerups:
+        if self.lineas_3_simultaneas and self.powerups:
             # Seleccionar e instanciar el Power-Up (ej. GEM_POWERUP)
             nombre_seleccionado = list(self.powerups.keys())[0]  # Obtener el primer powerup
             self.nombre_pieza_actual = nombre_seleccionado
@@ -235,7 +234,6 @@ class Juego:
             
             # Resetear las condiciones especiales tras el spawn
             self.lineas_3_simultaneas = False
-            self.l_piece_rotaciones = 0
         else:
             # 2. Seleccion ponderada (CHANCE) de pieza regular
             nombres = list(self.shapes.keys())
@@ -275,8 +273,6 @@ class Juego:
         nueva_rotacion = (self.pieza_rotacion + 1) % len(self.pieza_actual)
         if not self.tetris_verificar_colision(self.pieza_x, self.pieza_y, nueva_rotacion):
             self.pieza_rotacion = nueva_rotacion
-            if self.nombre_pieza_actual == 'L_PIECE':
-                self.l_piece_rotaciones += 1
 
     def tetris_fijar_pieza(self):
         matriz_pieza = self.pieza_actual[self.pieza_rotacion]
@@ -297,6 +293,27 @@ class Juego:
 
     def tetris_verificar_colision(self, x, y, rotacion):
         if not self.pieza_actual: return False
+        
+        # Comportamiento especial de traspaso (phasing) para GEM_POWERUP
+        if self.nombre_pieza_actual == 'GEM_POWERUP':
+            # Verificar límites laterales e inferior de la pantalla
+            if not (0 <= x < self.ancho):
+                return True
+            if not (0 <= y < self.alto):
+                return True
+            # Encontrar el hueco vacío más profundo de la columna x
+            deepest_y = -1
+            for y_check in range(self.alto - 1, -1, -1):
+                if self.grid[y_check][x] == 0:
+                    deepest_y = y_check
+                    break
+            # Si intenta descender por debajo del hueco más profundo, colisiona
+            if y > deepest_y:
+                return True
+            # En cualquier otro caso, puede atravesar y traspasar bloques colocados
+            return False
+
+        # Comportamiento normal para el resto de piezas
         matriz_pieza = self.pieza_actual[rotacion]
         for y_offset, fila in enumerate(matriz_pieza):
             for x_offset, celda in enumerate(fila):
