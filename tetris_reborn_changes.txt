@@ -1,0 +1,71 @@
+========================================================================
+             DOCUMENTO DE CAMBIOS: TETRIS REBORN (ACTIVIDAD 3)
+========================================================================
+
+Este documento detalla los cambios específicos aplicados en el compilador, el motor de juego y la gramática del proyecto RetroBrik para incorporar la rotación completa de 4 estados, colores dinámicos por pieza, probabilidad de aparición ponderada (CHANCE) y el sistema de Power-Ups con física de traspaso (phasing).
+
+------------------------------------------------------------------------
+1. ANÁLISIS DE IMPACTO EN LA ARQUITECTURA
+------------------------------------------------------------------------
+*   Sintaxis y Gramática (tetris.bnf): Se agregaron reglas sintácticas para definir atributos opcionales (COLOR y CHANCE) y la nueva estructura DEFINE POWERUP.
+*   Compilador (compiler.py): Se actualizó el analizador léxico (lexer) para tolerar códigos hexadecimales de color y no removerlos como comentarios, y el Parser para procesar unificadamente definiciones de piezas y power-ups en el AST en formato diccionario.
+*   Motor de Juego (runtime.py): Se implementó la normalización retrocompatible en __init__ para permitir leer JSONs antiguos. Se eliminaron valores "quemados" (hardcoded) de color y spawn. Se introdujo el dibujado colorido persistente en el tablero y el sistema físico de colisión GEM_POWERUP (traspaso sólido y asentamiento inteligente en el hueco más profundo de la columna).
+
+------------------------------------------------------------------------
+2. LÍNEAS DE CÓDIGO AGREGADAS Y MODIFICADAS POR ARCHIVO
+------------------------------------------------------------------------
+
+A. compiler.py (Compilador universal)
+*   Líneas 10-14 (Lexer): Reemplazo de la eliminación de comentarios clásica para preservar códigos hex, y extensión de 'token_regex' para reconocer cadenas de color hexadecimal.
+    Código:
+    codigo_fuente = re.sub(r'#(?![0-9A-Fa-f]{6}\b|[0-9A-Fa-f]{3}\b).*', '', codigo_fuente)
+    token_regex = r'#[0-9A-Fa-f]{6}\b|#[0-9A-Fa-f]{3}\b|\b[A-Z_]+\b|\d+|[\[\](),:]'
+*   Líneas 17-20 (Parser.__init__): Se añadió el inicializador del diccionario "powerups" dentro del AST de salida.
+    Código:
+    self.ast = {"tipo_juego": None, "config": {}, "shapes": {}, "events": {}, "powerups": {}}
+*   Línea 30 (Parser.parse): Se cambió el despachador de 'self.parsear_shape()' a 'self.parsear_define()'.
+*   Líneas 59-108 (Parser.parsear_define): Nueva función de análisis sintáctico unificado que procesa de manera opcional 'COLOR' y 'CHANCE' para piezas normales (SHAPE) y de poder (POWERUP), y los archiva correspondientemente.
+
+B. runtime.py (Motor de juego / Runtime)
+*   Líneas 9-14 (Imports): Bloque try/except para fallback dinámico de imports entre Tkinter (Python 2) y tkinter (Python 3).
+*   Líneas 57-79 (Juego.__init__): Normalización retrocompatible de formas antiguas (listas de matrices simples) y carga adaptativa de la nueva sección de power-ups, así como inicialización de rastreadores:
+    Código:
+    self.lineas_3_simultaneas = False
+*   Líneas 152-167 (Juego.dibujar): Modificación del Canvas dinámico para pintar celdas fijadas usando su color específico del grid en lugar de un gris estático, y renderizar el color respectivo de piezas activas ya sean shapes o power-ups.
+*   Líneas 207-238 (Juego.tetris_spawn_pieza): Implementación del chequeo de la condición de triple línea simultánea para spawnear GEM_POWERUP, y algoritmo puro de selección ponderada acumulativo por peso (CHANCE) compatible con Python 2.7 y 3 para piezas regulares.
+*   Líneas 248-261 (Juego.tetris_fijar_pieza): Almacenamiento del color específico de la pieza fija en el grid base 'self.grid' al momento de fijarse en el fondo.
+*   Líneas 270-277 (Juego.tetris_limpiar_lineas): Monitoreo de líneas despejadas para activar la bandera 'self.lineas_3_simultaneas = True' si 'lineas_limpias >= 3'.
+*   Líneas 293-316 (Juego.tetris_verificar_colision): Implementación de la física de traspaso sólida y fijado inteligente de 'GEM_POWERUP' de 1x1 en el hueco más profundo disponible de la columna actual ('deepest_y').
+*   Líneas 374-386 (Juego.__main__): Remoción del parámetro 'encoding' en las llamadas 'open()' para asegurar compatibilidad absoluta con versiones anteriores de Python (Python 2.7).
+
+C. gramaticas bnf/tetris.bnf (Reglas de Sintaxis BNF)
+*   Línea 5: Modificación de la producción <definiciones> para incorporar la nueva regla <definicion_powerup>.
+*   Líneas 6-13: Adición de las reglas formales de sintaxis para la definición de power-ups, colores hexadecimales y chances de aparición ponderada.
+
+D. games/tetris_remake.brick (Especificaciones del Juego Remake)
+*   Inclusión de 4 estados de rotación perfectos en matriz 4x4 para I_PIECE.
+*   Corrección geométrica de las rotaciones de L_PIECE.
+*   Personalización con etiquetas 'COLOR' y 'CHANCE' por pieza.
+*   Adición del nuevo bloque especial de poder:
+    DEFINE POWERUP GEM_POWERUP:
+      COLOR: #FFD700
+      CHANCE: 0
+      STATE 1:
+        [1]
+    END
+
+------------------------------------------------------------------------
+3. APORTES DE LOS INTEGRANTES DEL GRUPO
+------------------------------------------------------------------------
+*   Luis Mario Cardozo (LuismallitoDev):
+    - Rediseño de matrices de rotación coherente (4 estados) para todas las piezas.
+    - Implementación del analizador léxico y sintáctico flexible en compiler.py (COLOR y CHANCE).
+    - Programación de la lógica de normalización retrocompatible y selección ponderada acumulativa sin librerías externas en runtime.py.
+    - Desarrollo de la física de traspaso (phasing) y asentamiento inteligente en el hueco más profundo para el bloque GEM_POWERUP de 1x1.
+    - Adaptación y corrección de compatibilidad retroactiva universal de lectura/escritura (Python 2.7 / Python 3).
+
+*   [Nombre Integrante 2]:
+    - [Detalle aporte del Integrante 2 - Ej. Redacción de Gramática BNF y documentación]
+
+*   [Nombre Integrante 3]:
+    - [Detalle aporte del Integrante 3 - Ej. Pruebas de retrocompatibilidad y edición de video demostrativo]
